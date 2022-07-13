@@ -1,0 +1,118 @@
+import mysql.connector
+
+import pandas as pd
+import xlwt as xlwt
+
+from config import host, user, password
+
+from mysql.connector import Error
+
+def create_connection(host_name, user_name, user_password):
+    connection = None
+    try:
+        connection = mysql.connector.connect(
+            host=host_name,
+            user=user_name,
+            passwd=user_password
+        )
+        print("Connection to SQL DB successful")
+    except Error as e:
+        print(f"The error '{e}' occurred")
+
+    return connection
+
+connection = create_connection(host, user, password)
+
+def create_database(connection, query):
+    cursor = connection.cursor()
+    try:
+        cursor.execute(query)
+        print("Database created successfully")
+    except Error as e:
+        print(f"The error '{e}' occurred")
+
+create_database_query = "CREATE DATABASE sm_app"
+create_database(connection, create_database_query)
+
+def create_connection(host_name, user_name, user_password, db_name):
+    connection = None
+    try:
+        connection = mysql.connector.connect(
+            host=host_name,
+            user=user_name,
+            passwd=user_password,
+            database=db_name
+        )
+        print("Connection to SQL DB successful")
+    except Error as e:
+        print(f"The error '{e}' occurred")
+
+    return connection
+
+connection = create_connection(host, user, password, "sm_app")
+
+def execute_query(connection, query):
+    cursor = connection.cursor()
+    try:
+        cursor.execute(query)
+        connection.commit()
+        print("Query executed successfully")
+    except Error as e:
+        print(f"The error '{e}' occurred")
+
+
+
+
+fd = open('sqldb.sql', 'r')
+sqlFile = fd.read()
+fd.close()
+sqlCommands = sqlFile.split(';')
+for command in sqlCommands:
+    execute_query(connection, command)
+
+def execute_read_query(connection, query):
+    cursor = connection.cursor()
+    result = None
+    try:
+        cursor.execute(query)
+        result = cursor.fetchall()
+        return result
+    except Error as e:
+        print(f"The error '{e}' occurred")
+
+from openpyxl import Workbook
+
+from openpyxl import Workbook
+
+import openpyxl
+
+wb = openpyxl.load_workbook("teams.xlsx")
+
+sheet = wb.active
+
+
+
+select_event_wins = "SELECT play_id, count(play_id) FROM event_value WHERE outcome = 'win' GROUP BY play_id"
+wins = execute_read_query(connection, select_event_wins)
+
+select_event_loses = "SELECT play_id, count(play_id) FROM event_value WHERE outcome = 'lose' GROUP BY play_id"
+loses = execute_read_query(connection, select_event_loses)
+for win in wins:
+    for lose in loses:
+        if win[0] == lose [0]:
+            sheet.append(win+lose)
+
+select_teams = "SELECT e.participants, count(*) FROM (SELECT concat(least(home_team, away_team),' VS ', greatest(home_team, away_team)) AS participants FROM event_entity) AS e GROUP BY participants"
+events = execute_read_query(connection, select_teams)
+
+# wb = openpyxl.load_workbook("teams2.xlsx")
+#
+# sheet = wb.active
+# for event in events:
+#     sheet.append(event)
+
+wb.save('teams.xlsx')
+# wb.save('teams2.xlsx')
+
+
+
